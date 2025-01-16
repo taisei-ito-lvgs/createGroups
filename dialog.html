@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      #memberCheckboxes {
+        max-height: 250px; 
+        overflow-y: auto;  
+        margin-bottom: 10px; 
+      }
+    </style>
+  </head>
+  <body>
+    <h2>参加メンバーを選択してください</h2>
+    
+    <!-- 全選択・全解除ボタンをテキストの下に配置 -->
+    <button type="button" onclick="toggleCheckboxes(true)">全選択</button>
+    <button type="button" onclick="toggleCheckboxes(false)">全解除</button><br><br>
+    
+    <form onsubmit="handleSubmit(event)">
+      <div id="memberCheckboxes">
+        <!-- チェックボックスが動的にここに挿入されます -->
+      </div><br>
+      <label for="groupSize">1グループの人数を選択してください:</label>
+      <input type="number" id="groupSize" name="groupSize" value="3" min="1"><br><br>
+      <button type="submit">グループ作成</button>
+    </form>
+
+    <script>
+      // ページが読み込まれた後にチェックボックスを生成
+      window.onload = function() {
+        google.script.run.withSuccessHandler(function(members) {
+          if (!members || members.length === 0) {
+            alert("メンバーリストが空です！");
+            return;
+          }
+          const memberCheckboxesDiv = document.getElementById("memberCheckboxes");
+          members.forEach(function(member) {
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.name = "member";
+            checkbox.value = member;
+            const label = document.createElement("label");
+            label.textContent = member;
+            memberCheckboxesDiv.appendChild(checkbox);
+            memberCheckboxesDiv.appendChild(label);
+            memberCheckboxesDiv.appendChild(document.createElement("br"));
+          });
+        }).getMemberList(); // スプレッドシートからメンバーリストを取得
+      };
+
+      // チェックボックスの全選択/全解除を切り替える関数
+      function toggleCheckboxes(select) {
+        const checkboxes = document.querySelectorAll('input[name="member"]');
+        checkboxes.forEach(function(checkbox) {
+          checkbox.checked = select; // select が true なら全選択、false なら全解除
+        });
+      }
+
+      function handleSubmit(event) {
+        event.preventDefault(); // ページリロードを防止
+
+        // 選択されたメンバーを収集
+        const selectedMembers = [];
+        const checkboxes = document.querySelectorAll('input[name="member"]:checked');
+        checkboxes.forEach(function(checkbox) {
+          selectedMembers.push(checkbox.value);
+        });
+
+        const groupSize = document.getElementById("groupSize").value;
+
+        // GASの関数を呼び出す
+        google.script.run
+          .withSuccessHandler(() => {
+            alert("グループ分けが完了しました！");
+            google.script.host.close(); // モーダルを閉じる
+          })
+          .withFailureHandler((error) => {
+            alert("エラーが発生しました: " + error.message);
+          })
+          .createGroupsFromModal({ members: selectedMembers.join(","), groupSize });
+      }
+    </script>
+  </body>
+</html>
